@@ -5,10 +5,23 @@ from pathlib import Path
 try:
     from ai_edge_litert.interpreter import Interpreter
 except ImportError:
-    from tflite_runtime.interpreter import Interpreter
+    try:
+        from tflite_runtime.interpreter import Interpreter
+    except ImportError:
+        raise SystemExit(
+            "ERROR: No TFLite runtime found.\n"
+            "Run:  pip3 install ai-edge-litert\n"
+            "  or: pip3 install tflite-runtime"
+        )
 
 MODEL_PATH = Path(__file__).parent / "pumpkin.tflite"
 LABELS_PATH = Path(__file__).parent / "labels.txt"
+
+if not MODEL_PATH.exists():
+    raise SystemExit(
+        f"ERROR: Model file not found: {MODEL_PATH}\n"
+        "Copy pumpkin.tflite into the computer/ folder."
+    )
 
 labels = LABELS_PATH.read_text().strip().splitlines()
 
