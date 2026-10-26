@@ -5,8 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [ ! -d "venv" ]; then
-  echo "Creating virtual environment..."
-  python3 -m venv venv
+  echo "Creating virtual environment (Python 3.12)..."
+  python3.12 -m venv venv
 fi
 
 source venv/bin/activate
