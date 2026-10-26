@@ -1,54 +1,71 @@
 import numpy as np
 from PIL import Image
 from pathlib import Path
-
-try:
-    from ai_edge_litert.interpreter import Interpreter
-except ImportError:
-    try:
-        from tflite_runtime.interpreter import Interpreter
-    except ImportError:
-        raise SystemExit(
-            "ERROR: No TFLite runtime found.\n"
-            "Run:  pip3 install ai-edge-litert\n"
-            "  or: pip3 install tflite-runtime"
-        )
+from io import BytesIO
 
 MODEL_PATH = Path(__file__).parent / "pumpkin.tflite"
 LABELS_PATH = Path(__file__).parent / "labels.txt"
 
-if not MODEL_PATH.exists():
-    raise SystemExit(
-        f"ERROR: Model file not found: {MODEL_PATH}\n"
-        "Copy pumpkin.tflite into the computer/ folder."
-    )
+_interpreter = None
+_inp = None
+_out = None
+INPUT_SIZE = (224, 224)
 
-labels = LABELS_PATH.read_text().strip().splitlines()
 
-interpreter = Interpreter(model_path=str(MODEL_PATH))
-interpreter.allocate_tensors()
-_inp = interpreter.get_input_details()[0]
-_out = interpreter.get_output_details()[0]
+def _load():
+    global _interpreter, _inp, _out, INPUT_SIZE
 
-# Derive expected image size from model metadata
-_shape = _inp["shape"]  # e.g. [1, 224, 224, 3]
-INPUT_SIZE = (_shape[1], _shape[2])
+    try:
+        from ai_edge_litert.interpreter import Interpreter
+    except ImportError:
+        try:
+            from tflite_runtime.interpreter import Interpreter
+        except ImportError:
+            raise RuntimeError(
+                "No TFLite runtime installed. Run:  pip install ai-edge-litert"
+            )
+
+    if not MODEL_PATH.exists():
+        raise RuntimeError(
+            f"Model file not found: {MODEL_PATH}\n"
+            "Copy pumpkin.tflite into the computer/ folder."
+        )
+
+    labels_text = LABELS_PATH.read_text().strip().splitlines()
+
+    interp = Interpreter(model_path=str(MODEL_PATH))
+    interp.allocate_tensors()
+    inp = interp.get_input_details()[0]
+    out = interp.get_output_details()[0]
+    shape = inp["shape"]
+    INPUT_SIZE = (shape[1], shape[2])
+
+    _interpreter = interp
+    _inp = inp
+    _out = out
+    return labels_text
+
+
+_labels = None
 
 
 def classify(image_bytes: bytes) -> dict:
-    """Return label, confidence (0–1), and all raw scores."""
-    from io import BytesIO
+    global _interpreter, _labels
+
+    if _interpreter is None:
+        _labels = _load()
+
     img = Image.open(BytesIO(image_bytes)).convert("RGB").resize(INPUT_SIZE)
     x = np.array(img, dtype=np.float32) / 255.0
     x = np.expand_dims(x, axis=0)
 
-    interpreter.set_tensor(_inp["index"], x)
-    interpreter.invoke()
-    scores = interpreter.get_tensor(_out["index"])[0]
+    _interpreter.set_tensor(_inp["index"], x)
+    _interpreter.invoke()
+    scores = _interpreter.get_tensor(_out["index"])[0]
 
     i = int(np.argmax(scores))
     return {
-        "label": labels[i],
+        "label": _labels[i],
         "confidence": float(scores[i]),
-        "all_scores": {labels[j]: float(scores[j]) for j in range(len(labels))},
+        "all_scores": {_labels[j]: float(scores[j]) for j in range(len(_labels))},
     }
