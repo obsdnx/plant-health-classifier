@@ -51,6 +51,7 @@ async def classify_leaf(image: UploadFile = File(...)):
         "confidence": round(confidence, 4),
         "status": "ok",
         "explanation": explanation,
+        "demo": result.get("demo", False),
     }
 
 
