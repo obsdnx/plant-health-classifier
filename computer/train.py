@@ -30,9 +30,14 @@ import numpy as np
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
-DATA_DIR  = BASE / "data" / "pumpkin"
 MODEL_DIR = BASE / "model"
 LABELS_PATH = BASE / "labels.txt"
+
+# Use Kaggle cache if local data dir not present
+_KAGGLE_CACHE = Path.home() / ".cache/kagglehub/datasets/tahmidmir/pumpkin-leaf-diseases-dataset-from-bangladesh/versions/1/Pumpkin Leaf Diseases Dataset From Bangladesh/Original Dataset"
+DATA_DIR = BASE / "data" / "pumpkin"
+if not DATA_DIR.exists() and _KAGGLE_CACHE.exists():
+    DATA_DIR = _KAGGLE_CACHE
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 EPOCHS      = 15
@@ -120,8 +125,8 @@ class TransformDataset(Dataset):
 train_ds = TransformDataset(train_ds_raw, train_tf)
 val_ds   = TransformDataset(val_ds_raw,   val_tf)
 
-train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=4, pin_memory=True)
-val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True)
+train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True,  num_workers=0, pin_memory=False)
+val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=0, pin_memory=False)
 
 # ── Model — load pretrained MobileNetV2, replace classifier head ───────────────
 print("\nLoading pretrained MobileNetV2...")
