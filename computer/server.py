@@ -1,13 +1,23 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 import uvicorn
 
 from classifier import classify
 from explainer import explain
 
-CONFIDENCE_THRESHOLD = 0.60
+CONFIDENCE_THRESHOLD_REAL = 0.60
+CONFIDENCE_THRESHOLD_DEMO = 0.00
 
 app = FastAPI(title="Plant Health Classifier")
+
+_static = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(_static)), name="static")
+
+@app.get("/")
+def index():
+    return FileResponse(str(_static / "index.html"))
 
 
 @app.get("/health")
@@ -32,8 +42,9 @@ async def classify_leaf(image: UploadFile = File(...)):
 
     label = result["label"]
     confidence = result["confidence"]
+    threshold = CONFIDENCE_THRESHOLD_DEMO if result.get("demo") else CONFIDENCE_THRESHOLD_REAL
 
-    if confidence < CONFIDENCE_THRESHOLD:
+    if confidence < threshold:
         return {
             "label": label,
             "confidence": round(confidence, 4),
