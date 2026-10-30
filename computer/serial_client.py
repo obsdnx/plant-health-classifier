@@ -18,7 +18,7 @@ import requests
 import serial
 
 SERVER_URL = "http://localhost:8000/classify"
-BAUD_RATE  = 921600
+BAUD_RATE  = 460800
 
 
 def find_port():
